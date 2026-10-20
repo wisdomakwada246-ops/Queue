@@ -1,0 +1,309 @@
+Queue assignment 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print Spooler Queue Simulator</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            margin: 0 0 0.5rem 0;
+            color: var(--primary);
+        }
+
+        header p {
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button.secondary {
+            background-color: #ef4444;
+        }
+        button.secondary:hover {
+            background-color: #dc2626;
+        }
+
+        .actions-row {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        /* Queue Visualizer */
+        .queue-container {
+            min-height: 120px;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            overflow-x: auto;
+            background: #f1f5f9;
+        }
+
+        .queue-empty {
+            color: var(--text-muted);
+            font-style: italic;
+            width: 100%;
+            text-align: center;
+        }
+
+        .queue-item {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            min-width: 140px;
+            box-shadow: 0 2px 4px rgb(0 0 0 / 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            animation: fadeIn 0.3s ease-in-out;
+            position: relative;
+        }
+
+        .queue-item.active-print {
+            border-color: var(--success);
+            background-color: #ecfdf5;
+        }
+
+        .item-title {
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+
+        .item-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Print Spooler Simulator</h1>
+        <p>Demonstrating First-In, First-Out Queue Behavior</p>
+    </header>
+
+    <div class="card">
+        <h3>Add Print Job</h3>
+        <div class="controls">
+            <input type="text" id="jobInput" placeholder="Enter document name (e.g., Report.pdf)..." />
+            <button onclick="addJob()">Enqueue Job</button>
+        </div>
+        <div class="actions-row">
+            <button onclick="processJob()">Print Next Job (Dequeue)</button>
+            <button class="secondary" onclick="clearQueue()">Clear Queue</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="labels">
+            <span>← Front of Queue (Next to Print)</span>
+            <span>Back of Queue (Newest) →</span>
+        </div>
+        <div class="queue-container" id="queueContainer">
+            <div class="queue-empty">Queue is empty. Add a print job above!</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    class Queue {
+        constructor() {
+            this.items = [];
+        }
+
+        enqueue(element) {
+            this.items.push(element);
+        }
+
+        dequeue() {
+            if (this.isEmpty()) return null;
+            return this.items.shift();
+        }
+
+        isEmpty() {
+            return this.items.length === 0;
+        }
+
+        clear() {
+            this.items = [];
+        }
+
+        getItems() {
+            return this.items;
+        }
+    }
+
+    const printQueue = new Queue();
+    let jobIdCounter = 1;
+
+    const jobInput = document.getElementById('jobInput');
+    const queueContainer = document.getElementById('queueContainer');
+
+    // Allow pressing "Enter" to enqueue
+    jobInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            addJob();
+        }
+    });
+
+    function addJob() {
+        const text = jobInput.value.trim();
+        if (!text) {
+            alert('Please enter a document name.');
+            return;
+        }
+
+        const job = {
+            id: jobIdCounter++,
+            name: text,
+            timestamp: new Date().toLocaleTimeString()
+        };
+
+        printQueue.enqueue(job);
+        jobInput.value = '';
+        renderQueue();
+    }
+
+    function processJob() {
+        if (printQueue.isEmpty()) {
+            alert('The queue is empty. No jobs to print.');
+            return;
+        }
+
+        // Highlight front item before removing
+        const firstElementNode = queueContainer.children[0];
+        if (firstElementNode) {
+            firstElementNode.classList.add('active-print');
+        }
+
+        setTimeout(() => {
+            const printedJob = printQueue.dequeue();
+            renderQueue();
+        }, 400); // delay
+    }
+
+    function clearQueue() {
+        printQueue.clear();
+        renderQueue();
+    }
+
+    function renderQueue() {
+        const items = printQueue.getItems();
+       
+        if (items.length === 0) {
+            queueContainer.innerHTML = '<div class="queue-empty">Queue is empty. Add a print job above!</div>';
+            return;
+        }
+
+        queueContainer.innerHTML = '';
+        items.forEach((job, index) => {
+            const div = document.createElement('div');
+            div.className = 'queue-item';
+            if (index === 0) div.classList.add('active-print'); // next in line
+
+            div.innerHTML = `
+                <span class="item-title">${job.name}</span>
+                <span class="item-meta">ID: #${job.id}</span>
+                <span class="item-meta">Added: ${job.timestamp}</span>
+            `;
+            queueContainer.appendChild(div);
+        });
+    }
+</script>
+
+</body>
+</html>
